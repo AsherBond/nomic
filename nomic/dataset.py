@@ -415,11 +415,11 @@ class AtlasProjection:
     Instead instantiate an AtlasDataset and use the dataset.maps attribute to retrieve an AtlasProjection.
     '''
 
-    def __init__(self, project: "AtlasDataset", atlas_index_id: str, projection_id: str, name):
+    def __init__(self, dataset: "AtlasDataset", atlas_index_id: str, projection_id: str, name):
         """
         Creates an AtlasProjection.
         """
-        self.project = project
+        self.dataset = dataset
         self.id = projection_id
         self.atlas_index_id = atlas_index_id
         self.projection_id = projection_id
@@ -437,13 +437,13 @@ class AtlasProjection:
         Retrieves a map link.
         '''
         #return f"{self.project.web_path}/data/{self.project.meta['organization_slug']}/{self.project.meta['slug']}/map"
-        return f"{self.project.web_path}/map/{self.project.id}/{self.id}"
+        return f"{self.dataset.web_path}/map/{self.dataset.id}/{self.id}"
 
     @property
     def _status(self):
         response = requests.get(
-            self.project.atlas_api_path + f"/v1/project/index/job/progress/{self.atlas_index_id}",
-            headers=self.project.header,
+            self.dataset.atlas_api_path + f"/v1/project/index/job/progress/{self.atlas_index_id}",
+            headers=self.dataset.header,
         )
         if response.status_code != 200:
             raise Exception(response.text)
@@ -518,7 +518,7 @@ class AtlasProjection:
     @property
     def duplicates(self):
         """Duplicate detection state"""
-        if self.project.is_locked:
+        if self.dataset.is_locked:
             raise Exception('Dataset is locked! Please wait until the dataset is unlocked to access duplicates.')
         if self._duplicates is None:
             self._duplicates = AtlasMapDuplicates(self)
@@ -527,10 +527,8 @@ class AtlasProjection:
     @property
     def topics(self):
         """Topic state"""
-        if self.project.is_locked:
-            raise Exception(
-                'Dataset is locked for state access! Please wait until the dataset is unlocked to access topics.'
-            )
+        if self.dataset.is_locked:
+            raise Exception('Dataset is locked for state access! Please wait until the dataset is unlocked to access topics.')
         if self._topics is None:
             self._topics = AtlasMapTopics(self)
         return self._topics
@@ -538,10 +536,8 @@ class AtlasProjection:
     @property
     def embeddings(self):
         """Embedding state"""
-        if self.project.is_locked:
-            raise Exception(
-                'Dataset is locked for state access! Please wait until the dataset is unlocked to access embeddings.'
-            )
+        if self.dataset.is_locked:
+            raise Exception('Dataset is locked for state access! Please wait until the dataset is unlocked to access embeddings.')
         if self._embeddings is None:
             self._embeddings = AtlasMapEmbeddings(self)
         return self._embeddings
@@ -549,10 +545,8 @@ class AtlasProjection:
     @property
     def tags(self):
         """Tag state"""
-        if self.project.is_locked:
-            raise Exception(
-                'Dataset is locked for state access! Please wait until the dataset is unlocked to access tags.'
-            )
+        if self.dataset.is_locked:
+            raise Exception('Dataset is locked for state access! Please wait until the dataset is unlocked to access tags.')
         if self._tags is None:
             self._tags = AtlasMapTags(self)
         return self._tags
@@ -560,10 +554,8 @@ class AtlasProjection:
     @property
     def data(self):
         """Metadata state"""
-        if self.project.is_locked:
-            raise Exception(
-                'Dataset is locked for state access! Please wait until the dataset is unlocked to access data.'
-            )
+        if self.dataset.is_locked:
+            raise Exception('Dataset is locked for state access! Please wait until the dataset is unlocked to access data.')
         if self._data is None:
             self._data = AtlasMapData(self)
         return self._data
@@ -642,7 +634,7 @@ class AtlasProjection:
         '''
 
         self.tile_destination.mkdir(parents=True, exist_ok=True)
-        root = f'{self.project.atlas_api_path}/v1/project/{self.project.id}/index/projection/{self.id}/quadtree/'
+        root = f'{self.dataset.atlas_api_path}/v1/project/{self.dataset.id}/index/projection/{self.id}/quadtree/'
         quads = [f'0/0/0']
         all_quads = []
         sidecars = None
@@ -678,7 +670,7 @@ class AtlasProjection:
 
     @property
     def datum_id_field(self):
-        return self.project.meta["unique_id_field"]
+        return self.dataset.meta["unique_id_field"]
 
     def _get_atoms(self, ids: List[str]) -> List[Dict]:
         '''
@@ -696,9 +688,9 @@ class AtlasProjection:
             raise ValueError("You must specify a list of ids when getting data.")
 
         response = requests.post(
-            self.project.atlas_api_path + "/v1/project/atoms/get",
-            headers=self.project.header,
-            json={'project_id': self.project.id, 'index_id': self.atlas_index_id, 'atom_ids': ids},
+            self.dataset.atlas_api_path + "/v1/project/atoms/get",
+            headers=self.dataset.header,
+            json={'project_id': self.dataset.id, 'index_id': self.atlas_index_id, 'atom_ids': ids},
         )
 
         if response.status_code == 200:
@@ -859,7 +851,7 @@ class AtlasDataset(AtlasClass):
             projections = []
             for projection in index['projections']:
                 projection = AtlasProjection(
-                    project=self, projection_id=projection['id'], atlas_index_id=index['id'], name=index['index_name']
+                    dataset=self, projection_id=projection['id'], atlas_index_id=index['id'], name=index['index_name']
                 )
                 projections.append(projection)
             index = AtlasIndex(
